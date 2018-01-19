@@ -37,11 +37,15 @@ def catch_all(_):
     if not rule:
         return 'Not found', 404
 
-    target = rule.get_target(path)
+    try:
+        target = rule.get_target(path)
 
-    response = redirect(target, code=rule.code)
-    response.headers.extend(rule.headers)
-    return response
+        response = redirect(target, code=rule.code)
+        response.headers.extend(rule.headers)
+        return response
+
+    except Exception as ex:
+        return 'Failed: %s' % ex, 500
 
 
 def reload_configuration():

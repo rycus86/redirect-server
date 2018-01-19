@@ -4,20 +4,21 @@ import yaml
 
 
 class Rule(object):
-    def __init__(self, source, target, code=301, headers=None):
+    def __init__(self, source, target, code=301, **kwargs):
         self.source = source
         self.target = target
         self.code = code
         self.regex = None
-        self.headers = headers or {}
+        self.headers = kwargs.get('headers', dict())
+        self.ttl = kwargs.get('ttl')
 
     def get_target(self, path):
         return self.target
 
 
 class RegexRule(Rule):
-    def __init__(self, source, target, code=301, headers=None):
-        super(RegexRule, self).__init__(source, target, code, headers)
+    def __init__(self, source, target, code=301, **kwargs):
+        super(RegexRule, self).__init__(source, target, code, **kwargs)
         self.regex = re.compile(source, flags=re.IGNORECASE)
 
     def matches(self, path):
@@ -54,10 +55,49 @@ def read_rules(file_path):
                 rule = Rule(source, target)
 
             if 'code' in item:
-                rule.code = int(item['code'])
+                code = item['code']
+
+                if not re.match('^[0-9]{3}$', str(code)):
+                    raise Exception(
+                        'Invalid response code: %s in rule: %s' % (code, item)
+                    )
+
+                rule.code = int(code)
 
             if 'headers' in item:
-                rule.headers.update(item['headers'])
+                headers = item['headers']
+
+                if not isinstance(headers, dict):
+                    raise Exception(
+                        'Invalid header definition (`dict` expected) in rule: %s' % item
+                    )
+
+                rule.headers.update(headers)
+
+            if 'ttl' in item:
+                ttl = str(item['ttl'])
+
+                if not re.match('^[0-9]+[smhd]?$', ttl):
+                    raise Exception(
+                        'Invalid TTL definition (numbers and s/m/h/d accepted) in rule: %s' % item
+                    )
+                
+                if re.match('^[0-9]+[smhd]$', ttl):
+                    ttl, unit = int(ttl[:-1]), ttl[-1]
+
+                    if unit == 'm':
+                        ttl = ttl * 60
+
+                    elif unit == 'h':
+                        ttl = ttl * 60 * 60
+
+                    elif unit == 'd':
+                        ttl = ttl * 24 * 60 * 60
+
+                else:
+                    ttl = int(ttl)
+
+                rule.headers['Cache-Control'] = 'max-age=%d' % ttl
 
             yield rule
 
@@ -74,6 +114,16 @@ def configure(base_dir=None):
 
         if extension in ('.rules', '.yml', '.yaml'):
             for rule in read_rules(os.path.join(base_dir, filename)):
+                if rule.source in simple:
+                    raise Exception(
+                        'Rule is already defined for %s' % rule.source
+                    )
+
+                if any(rule.source == r.source for r in regex):
+                    raise Exception(
+                        'Regex rule is already defined for %s' % rule.source, rule
+                    )
+
                 if rule.regex:
                     regex.append(rule)
                 else:

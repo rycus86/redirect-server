@@ -47,6 +47,43 @@ class RulesTest(unittest.TestCase):
         self.verify('/smple', 'http://regex.one')
         self.verify('/0th3rRul3', 'http://regex.two')
 
+    def test_rule_ttl(self):
+        with open('./ttl.rules', 'w') as rules:
+            rules.write("""
+            rules:
+              - source: /30seconds
+                target: http://30.seconds
+                ttl: 30
+              
+              - source: /15seconds
+                target: http://15.seconds
+                ttl: 15s
+              
+              - source: /5minutes
+                target: http://5.minutes
+                ttl: 5m
+
+              - source: /4hours
+                target: http://4.hours
+                ttl: 4h
+              
+              - source: /90days
+                target: http://90.days
+                ttl: 90d
+            """)
+
+        try:
+            app.reload_configuration()
+
+        finally:
+            os.remove('./ttl.rules')
+
+        self.verify('/30seconds', 'http://30.seconds', headers={'Cache-Control': 'max-age=30'})
+        self.verify('/15seconds', 'http://15.seconds', headers={'Cache-Control': 'max-age=15'})
+        self.verify('/5minutes', 'http://5.minutes', headers={'Cache-Control': 'max-age=300'})
+        self.verify('/4hours', 'http://4.hours', headers={'Cache-Control': 'max-age=14400'})
+        self.verify('/90days', 'http://90.days', headers={'Cache-Control': 'max-age=7776000'})
+
     def test_from_files(self):
         with open('./redirects.yml', 'w') as rules:
             rules.write("""
