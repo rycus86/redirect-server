@@ -16,18 +16,20 @@ logger = logging.getLogger('redirect-service')
 logger.setLevel(logging.INFO)
 
 
-_simple_rules = {}
-_regex_rules = []
+_rules = {
+    'simple': {},
+    'regex': []
+}
 
 
 @app.route('/<path:_>', methods=['GET'])
 def catch_all(_):
     path = request.path
 
-    rule = _simple_rules.get(path)
+    rule = _rules['simple'].get(path)
 
     if not rule:
-        for regex_rule in _regex_rules:
+        for regex_rule in _rules['regex']:
             if regex_rule.matches(path):
                 rule = regex_rule
                 break
@@ -35,13 +37,18 @@ def catch_all(_):
     if not rule:
         return 'Not found', 404
 
-    response = redirect(rule.target, code=rule.code)
+    target = rule.get_target(path)
+
+    response = redirect(target, code=rule.code)
     response.headers.extend(rule.headers)
     return response
 
 
 def reload_configuration():
-    _simple_rules, _regex_rules = configure()
+    simple, regex = configure()
+
+    _rules['simple'] = simple
+    _rules['regex'] = regex
 
 
 def handle_signal(num, _):

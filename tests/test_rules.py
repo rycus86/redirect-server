@@ -1,3 +1,4 @@
+import os
 import unittest
 
 import app
@@ -6,8 +7,7 @@ from config import Rule, RegexRule
 
 class RulesTest(unittest.TestCase):
     def setUp(self):
-        setattr(app, '_simple_rules', {})
-        setattr(app, '_regex_rules', [])
+        self._set_rules([], [])
 
         app.app.testing = True
         self.client = app.app.test_client()
@@ -48,39 +48,64 @@ class RulesTest(unittest.TestCase):
         self.verify('/0th3rRul3', 'http://regex.two')
 
     def test_from_files(self):
-        with open('/tmp/redirects.yml', 'w') as rules:
+        with open('./redirects.yml', 'w') as rules:
             rules.write("""
             rules:
               - source: /simple
-                target: 'http://simple.sample/test'
+                target: http://simple.sample/test
 
               - source: /s/e/c/o/n/d
-                target: 'http://second.simple'
+                target: http://second.simple
                 code: 302
               
               - source: /headers
-                target: 'http://with.headers'
+                target: http://with.headers
                 headers:
                   X-Sample: sample
                   X-Testing: testing
             """)
 
-        with open('/tmp/regex.rules', 'w') as rules:
+        with open('./regex.rules', 'w') as rules:
             rules.write("""
             rules:
-              - source: /[a-z]+[0-9]+
+              - source: /[a-z]+[0-9]+$
                 target: http://letters.and.numbers
                 regex: true
               
               - source: /api/v[1-3]/test
                 target: /api/v4/test
                 regex: true
+              
+              - source: ^/([0-9]+)/([a-z]+)$
+                target: http://reversed/\\2/\\1
+                regex: true
             """)
 
-        app.reload_configuration()
+        try:
+            app.reload_configuration()
+
+        finally:
+            os.remove('./redirects.yml')
+            os.remove('./regex.rules')
 
         self.verify('/simple', 'http://simple.sample/test')
         self.verify('/not/simple', code=404)
+        self.verify('/s/e/c/o/n/d', 'http://second.simple', code=302)
+        self.verify('/headers', 'http://with.headers', headers={
+            'X-Sample': 'sample',
+            'X-Testing': 'testing'
+        })
+
+        self.verify('/xyz123', 'http://letters.and.numbers')
+        self.verify('/xyz123zz', code=404)
+        self.verify('http://example1.domain/api/v1/test', 'http://example1.domain/api/v4/test')
+        self.verify('http://example2.domain/api/v2/test', 'http://example2.domain/api/v4/test')
+        self.verify('http://example3.domain/api/v3/test', 'http://example3.domain/api/v4/test')
+        self.verify('http://example.domain/api/v5/test', code=404)
+
+        self.verify('/123/abcd', 'http://reversed/abcd/123')
+        self.verify('/999/xyza', 'http://reversed/xyza/999')
+        self.verify('/000/mmm1', code=404)
 
     def verify(self, uri, target=None, code=301, headers=None):
         response = self.client.get(uri)
@@ -97,11 +122,11 @@ class RulesTest(unittest.TestCase):
 
     @staticmethod
     def _set_rules(simple=None, regex=None):
-        if simple:
-            setattr(app, '_simple_rules', {
+        if simple is not None:
+            getattr(app, '_rules')['simple'] = {
                 rule.source: rule for rule in simple
-            })
+            }
         
-        if regex:
-            setattr(app, '_regex_rules', regex)
+        if regex is not None:
+            getattr(app, '_rules')['regex'] = regex
 
