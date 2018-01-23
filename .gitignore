@@ -1,3 +1,9 @@
+.idea/
 *.pyc
+
+src/*.yml
+src/*.yaml
+src/*.rules
+
 .coverage
 coverage.xml

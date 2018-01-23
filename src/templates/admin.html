@@ -1,6 +1,6 @@
 <html>
 <head>
-  <title>Admin UI - Redirect Service</title>
+  <title>Admin UI - Redirect Server</title>
 
   <style>
     div.edit span {
@@ -8,11 +8,19 @@
         display: inline-block;
     }
 
-    input.text {
+    div.edit form > div {
+        margin: 3px 0;
+    }
+
+    input[type="text"] {
         width: 300px;
     }
 
-    input.submit {
+    input[name="header__name"], input[name="header__value"] {
+        width: 150px;
+    }
+
+    input[type="submit"] {
         margin-left: 60px;
     }
 
@@ -28,34 +36,62 @@
         height: 5px;
     }
   </style>
+
+  <script>
+    function addMoreHeaders(el) {
+      var parent = el.parentElement,
+          grandParent = parent.parentElement,
+          cloned = parent.cloneNode(true),
+          sibling = parent.nextSibling;
+
+      cloned.querySelectorAll('input[type="text"]').forEach(function (item) {
+          item.value = '';
+      });
+
+      grandParent.insertBefore(cloned, sibling);
+      parent.removeChild(el);
+    }
+  </script>
 </head>
 <body>
   <h1>Admin UI</h1>
+
+  <div class="messages">
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <ul class=flashes>
+        {% for message in messages %}
+          <li>{{ message }}</li>
+        {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+  </div>
   
   <div class="edit">
     <form method="POST">
-      <div><span>Source:</span> <input class="text" type="text" name="source"/></div>
-      <div><span>Target:</span> <input class="text" type="text" name="target"/></div>
+      <div><span>Source:</span> <input type="text" name="source"/></div>
+      <div><span>Target:</span> <input type="text" name="target"/></div>
       <div><span>Regex:</span> <input type="checkbox" name="regex"/></div>
 
       <div class="spacer"></div>
 
       <div>
         <span>Code:</span>
-        <select>
+        <select name="code">
           <option value="301" selected>301 - Permanent Redirect</option>
           <option value="302">302 - Temporary Redirect</option>
         </select>
       </div>
-      <div><span>TTL:</span> <input class="text" type="text" name="ttl"/></div>
+      <div><span>TTL:</span> <input type="text" name="ttl"/></div>
       <div>
-        <span>Headers:</span> <input class="text" type="text" name="headers"/>
-        <input type="button" value="Add more"/>
+        <span>Header:</span> <input type="text" name="header__name"/> = <input type="text" name="header__value"/>
+        <input type="button" value="Add more" onclick="addMoreHeaders(this)"/>
       </div>
 
       <div class="spacer"></div>
 
-      <input class="submit" type="submit" value="Create"/>
+      <input type="submit" value="Create"/>
     </form>
   </div>
 
@@ -65,12 +101,12 @@
     <h2>Simple rules</h2>
     <div class="simple">
       <ol>
-      {% for key, rule in simple_rules.items() %}
+      {% for key, rule in simple_rules.items()|sort %}
         <li>
             <b>{{ rule.source }}</b> -&gt; {{ rule.target }} [{{ rule.code }}]
             {% if rule.headers %}
+              {% for name, value in rule.headers.items()|sort %}
               <div>
-              {% for name, value in rule.headers.items() %}
                 <b>{{ name }}:</b> {{ value }}
               </div>
               {% endfor %}
@@ -85,12 +121,12 @@
     <h2>Regex rules</h2>
     <div class="regex">
       <ol>
-      {% for rule in regex_rules %}
+      {% for rule in regex_rules|sort(attribute='source') %}
         <li>
             <b>{{ rule.source }}</b> -&gt; {{ rule.target }} [{{ rule.code }}]
             {% if rule.headers %}
+              {% for name, value in rule.headers.items()|sort %}
               <div>
-              {% for name, value in rule.headers.items() %}
                 <b>{{ name }}:</b> {{ value }}
               </div>
               {% endfor %}

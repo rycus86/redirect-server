@@ -1,6 +1,10 @@
 import os
 import re
+import threading
+
 import yaml
+
+_config_lock = threading.Lock()
 
 
 class Rule(object):
@@ -33,6 +37,32 @@ class AdminSettings(object):
         self.path = path
         self.username = username
         self.password = password
+
+
+def _ttl_to_seconds(ttl):
+    ttl = str(ttl)
+
+    if not re.match('^[0-9]+[smhd]?$', ttl):
+        raise Exception(
+            'Invalid TTL definition (numbers and s/m/h/d accepted): %s' % ttl
+        )
+
+    if re.match('^[0-9]+[smhd]$', ttl):
+        ttl, unit = int(ttl[:-1]), ttl[-1]
+
+        if unit == 'm':
+            ttl = ttl * 60
+
+        elif unit == 'h':
+            ttl = ttl * 60 * 60
+
+        elif unit == 'd':
+            ttl = ttl * 24 * 60 * 60
+
+    else:
+        ttl = int(ttl)
+
+    return ttl
 
 
 def read_rules(file_path):
@@ -104,27 +134,7 @@ def read_rules(file_path):
                 rule.headers.update(headers)
 
             if 'ttl' in item:
-                ttl = str(item['ttl'])
-
-                if not re.match('^[0-9]+[smhd]?$', ttl):
-                    raise Exception(
-                        'Invalid TTL definition (numbers and s/m/h/d accepted) in rule: %s' % item
-                    )
-                
-                if re.match('^[0-9]+[smhd]$', ttl):
-                    ttl, unit = int(ttl[:-1]), ttl[-1]
-
-                    if unit == 'm':
-                        ttl = ttl * 60
-
-                    elif unit == 'h':
-                        ttl = ttl * 60 * 60
-
-                    elif unit == 'd':
-                        ttl = ttl * 24 * 60 * 60
-
-                else:
-                    ttl = int(ttl)
+                ttl = _ttl_to_seconds(item['ttl'])
 
                 rule.headers['Cache-Control'] = 'max-age=%d' % ttl
 
@@ -177,25 +187,57 @@ def configure(base_dir=None):
 
 
 def add_rule(target_file=None, base_dir=None, **kwargs):
-    # TODO locking
-    # TODO validation
     if not target_file:
         target_file = os.environ.get('TARGET_FILE', 'by-admin.rules')
 
     if not base_dir:
         base_dir = os.environ.get('RULES_DIR', '.')
+
+    simple, regex, admin = configure(base_dir)
     
     path = os.path.join(base_dir, target_file)
 
-    if os.path.exists(path):
-        with open(path, 'r') as existing_file:
-            config = yaml.load(existing_file)
+    source, target = kwargs.get('source'), kwargs.get('target')
 
-    else:
-        config = {'rules': []}
+    if not source:
+        raise Exception('Missing source')
 
-    config['rules'].append(kwargs)
+    if not target:
+        raise Exception('Missing target')
 
-    with open(path, 'w') as new_file:
-        yaml.dump(config, new_file)
+    if source in simple:
+        raise Exception(
+            'Rule is already defined for %s' % source
+        )
 
+    if admin and admin.path == source:
+        raise Exception(
+            'Rule is masking the admin path: %s' % source
+        )
+
+    if any(source == r.source for r in regex):
+        raise Exception(
+            'Regex rule is already defined for %s' % source
+        )
+
+    kwargs = {
+        key: value
+        for key, value in kwargs.items()
+        if value is not None and value != ''
+    }
+
+    if 'ttl' in kwargs:
+        kwargs['ttl'] = _ttl_to_seconds(kwargs['ttl'])
+
+    with _config_lock:
+        if os.path.exists(path):
+            with open(path, 'r') as existing_file:
+                config = yaml.load(existing_file)
+
+        else:
+            config = {'rules': list()}
+
+        config['rules'].append(kwargs)
+
+        with open(path, 'w') as new_file:
+            yaml.dump(config, new_file)
