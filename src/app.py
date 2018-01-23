@@ -3,10 +3,10 @@ import sys
 import signal
 import logging
 
-from flask import Flask, request, redirect
+from flask import Flask, request, redirect, render_template
 from prometheus_flask_exporter import PrometheusMetrics
 
-from config import configure
+from config import configure, add_rule
 
 app = Flask(__name__)
 metrics = PrometheusMetrics(app)
@@ -18,13 +18,22 @@ logger.setLevel(logging.INFO)
 
 _rules = {
     'simple': {},
-    'regex': []
+    'regex': [],
+    'admin': None
 }
 
 
-@app.route('/<path:_>', methods=['GET'])
+@app.route('/<path:_>', methods=['GET', 'POST'])
 def catch_all(_):
     path = request.path
+
+    admin = _rules['admin']
+
+    if admin and admin.path == path:
+        return handle_admin_request()
+    
+    if request.method != 'GET':
+        return 'Invalid HTTP method: %s' % request.method, 405
 
     rule = _rules['simple'].get(path)
 
@@ -48,11 +57,44 @@ def catch_all(_):
         return 'Failed: %s' % ex, 500
 
 
+def handle_admin_request():
+    # TODO authenticate
+
+    if request.method == 'GET':
+        simple, regex, admin = (_rules[key] for key in ('simple', 'regex', 'admin'))
+        return render_template('admin.html', 
+            simple_rules=simple,
+            regex_rules=regex,
+            admin=admin
+        )
+
+    elif request.method == 'POST':
+        admin = _rules['admin']
+        if not admin:
+            return 'Unexpected error: admin UI is not configured', 500
+
+        source, target = request.form['source'], request.form['target']
+        regex = 'regex' in request.form
+
+        logger.info('%s %s %s' % (source, target, regex))  # TODO
+
+        add_rule(source=source, target=target, regex=regex)
+
+        reload_configuration()
+        
+        return redirect(admin.path, 302)
+
+    return 'Invalid request method: %s' % request.method, 405
+
+
 def reload_configuration():
-    simple, regex = configure()
+    simple, regex, admin = configure()
 
     _rules['simple'] = simple
     _rules['regex'] = regex
+    _rules['admin'] = admin
+
+    logger.info('Reloaded %d rules' % (len(simple) + len(regex)))
 
 
 def handle_signal(num, _):

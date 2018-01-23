@@ -1,0 +1,113 @@
+<html>
+<head>
+  <title>Admin UI - Redirect Service</title>
+
+  <style>
+    div.edit span {
+        width: 60px;
+        display: inline-block;
+    }
+
+    input.text {
+        width: 300px;
+    }
+
+    input.submit {
+        margin-left: 60px;
+    }
+
+    div.rules div {
+        font-family: monospace;
+    }
+
+    div.rules li div {
+        padding-left: 16px;
+    }
+
+    div.spacer {
+        height: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Admin UI</h1>
+  
+  <div class="edit">
+    <form method="POST">
+      <div><span>Source:</span> <input class="text" type="text" name="source"/></div>
+      <div><span>Target:</span> <input class="text" type="text" name="target"/></div>
+      <div><span>Regex:</span> <input type="checkbox" name="regex"/></div>
+
+      <div class="spacer"></div>
+
+      <div>
+        <span>Code:</span>
+        <select>
+          <option value="301" selected>301 - Permanent Redirect</option>
+          <option value="302">302 - Temporary Redirect</option>
+        </select>
+      </div>
+      <div><span>TTL:</span> <input class="text" type="text" name="ttl"/></div>
+      <div>
+        <span>Headers:</span> <input class="text" type="text" name="headers"/>
+        <input type="button" value="Add more"/>
+      </div>
+
+      <div class="spacer"></div>
+
+      <input class="submit" type="submit" value="Create"/>
+    </form>
+  </div>
+
+  <div class="rules">
+
+    {% if simple_rules %}
+    <h2>Simple rules</h2>
+    <div class="simple">
+      <ol>
+      {% for key, rule in simple_rules.items() %}
+        <li>
+            <b>{{ rule.source }}</b> -&gt; {{ rule.target }} [{{ rule.code }}]
+            {% if rule.headers %}
+              <div>
+              {% for name, value in rule.headers.items() %}
+                <b>{{ name }}:</b> {{ value }}
+              </div>
+              {% endfor %}
+            {% endif %}
+        </li>
+      {% endfor %}
+      </ol>
+    </div>
+    {% endif %}
+
+    {% if regex_rules %}
+    <h2>Regex rules</h2>
+    <div class="regex">
+      <ol>
+      {% for rule in regex_rules %}
+        <li>
+            <b>{{ rule.source }}</b> -&gt; {{ rule.target }} [{{ rule.code }}]
+            {% if rule.headers %}
+              <div>
+              {% for name, value in rule.headers.items() %}
+                <b>{{ name }}:</b> {{ value }}
+              </div>
+              {% endfor %}
+            {% endif %}
+        </li>
+      {% endfor %}
+      </ol>
+    </div>
+    {% endif %}
+
+    <h2>Admin settings</h2>
+    <div class="admin">
+      <ul>
+        <li><b>Path:</b> {{ admin.path }}</li>
+      <ul>
+    </div>
+
+  </div> 
+</body>
+</html>

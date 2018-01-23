@@ -28,13 +28,42 @@ class RegexRule(Rule):
         return self.regex.sub(self.target, path)
 
 
+class AdminSettings(object):
+    def __init__(self, path, username, password):
+        self.path = path
+        self.username = username
+        self.password = password
+
+
 def read_rules(file_path):
     with open(file_path, 'r') as source_file:
         rules = yaml.load(source_file)
-        if 'rules' not in rules:
-            raise Exception(
-                'Failed to load rules from %s : Missing top-level "rules" list' % file_path
+
+        admin = None
+
+        if 'admin' in rules:
+            admin = rules.pop('admin')
+
+            if 'path' not in admin:
+                raise Exception('Missing "path" in admin settings')
+
+            if 'username' not in admin or 'password' not in admin:
+                raise Exception(
+                    'Missing username or password in admin settings'
+                )
+
+            yield AdminSettings(
+                admin['path'], admin['username'], admin['password']
             )
+
+        if 'rules' not in rules:
+            if admin:
+                return
+
+            else:
+                raise Exception(
+                    'Failed to load rules from %s : Missing top-level "rules" list' % file_path
+                )
 
         for item in rules['rules']:
             source, target = item.get('source'), item.get('target')
@@ -105,6 +134,7 @@ def read_rules(file_path):
 def configure(base_dir=None):
     simple = {}
     regex = []
+    admin = None
 
     if not base_dir:
         base_dir = os.environ.get('RULES_DIR', '.')
@@ -114,14 +144,28 @@ def configure(base_dir=None):
 
         if extension in ('.rules', '.yml', '.yaml'):
             for rule in read_rules(os.path.join(base_dir, filename)):
+                if isinstance(rule, AdminSettings):
+                    if admin:
+                        raise Exception(
+                            'Admin settings are already defined'
+                        )
+
+                    admin = rule
+                    continue
+
                 if rule.source in simple:
                     raise Exception(
                         'Rule is already defined for %s' % rule.source
                     )
 
+                if admin and admin.path == rule.source:
+                    raise Exception(
+                        'Rule is masking the admin path: %s' % rule.source
+                    )
+
                 if any(rule.source == r.source for r in regex):
                     raise Exception(
-                        'Regex rule is already defined for %s' % rule.source, rule
+                        'Regex rule is already defined for %s' % rule.source
                     )
 
                 if rule.regex:
@@ -129,5 +173,29 @@ def configure(base_dir=None):
                 else:
                     simple[rule.source] = rule
 
-    return simple, regex
+    return simple, regex, admin
+
+
+def add_rule(target_file=None, base_dir=None, **kwargs):
+    # TODO locking
+    # TODO validation
+    if not target_file:
+        target_file = os.environ.get('TARGET_FILE', 'by-admin.rules')
+
+    if not base_dir:
+        base_dir = os.environ.get('RULES_DIR', '.')
+    
+    path = os.path.join(base_dir, target_file)
+
+    if os.path.exists(path):
+        with open(path, 'r') as existing_file:
+            config = yaml.load(existing_file)
+
+    else:
+        config = {'rules': []}
+
+    config['rules'].append(kwargs)
+
+    with open(path, 'w') as new_file:
+        yaml.dump(config, new_file)
 
