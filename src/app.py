@@ -132,7 +132,7 @@ def verify_password(username, password):
 
     g.user = None
     if admin:
-        if admin.username == username and admin.password == password:
+        if admin.verify_credentials(username, password):
             g.user = username
             return True
     return False

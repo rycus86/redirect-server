@@ -1,5 +1,6 @@
 import os
 import re
+import hashlib
 import threading
 
 import yaml
@@ -36,7 +37,32 @@ class AdminSettings(object):
     def __init__(self, path, username, password):
         self.path = path
         self.username = username
-        self.password = password
+
+        if isinstance(password, dict):
+            self.algorithm, self.password = next(iter(password.items()))
+
+            try:
+                self.algorithm = getattr(hashlib, self.algorithm)
+
+            except Exception:
+                raise Exception(
+                    'Invalid password hashing algorithm: %s (use md5 or sha1)'
+                    % self.algorithm
+                )
+
+        else:
+            self.password = password
+            self.algorithm = None
+
+    def verify_credentials(self, username, password):
+        if self.username != username:
+            return
+
+        if self.algorithm:
+            return self.password == self.algorithm(password).hexdigest()
+
+        else:
+            return self.password == password
 
 
 def _ttl_to_seconds(ttl):
@@ -77,14 +103,22 @@ def read_rules(file_path):
             if 'path' not in admin:
                 raise Exception('Missing "path" in admin settings')
 
+            path = admin['path']
+
             if 'username' not in admin or 'password' not in admin:
                 raise Exception(
                     'Missing username or password in admin settings'
                 )
 
-            yield AdminSettings(
-                admin['path'], admin['username'], admin['password']
-            )
+            username, password = admin['username'], admin['password']
+
+            if not username:
+                raise Exception('Blank admin username')
+
+            if not password:
+                raise Exception('Blank admin password')
+
+            yield AdminSettings(path, username, password)
 
         if 'rules' not in rules:
             if admin:
