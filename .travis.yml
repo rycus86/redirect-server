@@ -29,8 +29,32 @@ jobs:
             --build-arg BUILD_TIMESTAMP=$(date +%s)      \
             -f $DOCKERFILE .
         - docker tag redirect-server:$DOCKER_TAG rycus86/redirect-server:$DOCKER_TAG
-        - docker login -u="rycus86" -p="$DOCKER_PASSWORD"
+        # smoke tests
+        - mkdir smoke
+        - |
+          cat << EOF > smoke/rules.yml
+          rules:
+            - source: /simple
+              target: http://test.sample/check-simple
+            - source: /regex/(.+)
+              target: http://test.regex/\1
+              regex:  true
+
+          admin:
+            path: /admin
+            username: smoke
+            password: testing
+          EOF
+        - |
+          docker run -d -p 5000:5000 -e HTTP_HOST=0.0.0.0  \
+              -e RULES_DIR=/smoke -v $PWD/smoke:/smoke:ro  \
+              redirect-server:$DOCKER_TAG
+        - curl -fsv http://localhost:5000/simple 2>&1 | grep '< Location: http://test.sample/check-simple'
+        - curl -fsv http://localhost:5000/regex/first 2>&1 | grep '< Location: http://test.regex/first'
+        - curl -fsv http://localhost:5000/regex/second 2>&1 | grep '< Location: http://test.regex/second'
+        - curl -fsv -u 'smoke:testing' http://localhost:5000/admin | grep '< HTTP/1.0 200 OK'
       after_success:
+        - docker login -u="rycus86" -p="$DOCKER_PASSWORD"
         - docker push rycus86/redirect-server:$DOCKER_TAG
       env:
         - DOCKER_TAG=amd64

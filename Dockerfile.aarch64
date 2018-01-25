@@ -2,10 +2,10 @@ FROM rycus86/arm64v8-alpine-qemu
 
 LABEL maintainer "Viktor Adam <rycus86@gmail.com>"
 
-RUN apk add --no-cache python3 py3-pip ca-certificates
+RUN apk add --no-cache python3
 
 ADD requirements.txt /tmp/requirements.txt
-RUN pip install -r /tmp/requirements.txt
+RUN pip3 install -r /tmp/requirements.txt
 
 RUN adduser -S webapp
 USER webapp
@@ -15,7 +15,7 @@ WORKDIR /app
 
 STOPSIGNAL SIGINT
 
-CMD [ "python", "app.py" ]
+CMD [ "python3", "app.py" ]
 
 # add app info as environment variables
 ARG GIT_COMMIT
