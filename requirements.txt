@@ -1,6 +1,5 @@
 flask
 flask-httpauth
-itsdangerous
 pyYAML
 prometheus-flask-exporter
 docker-helper
