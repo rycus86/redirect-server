@@ -11,7 +11,7 @@ script:
   # python tests
   - >
     cd tests && 
-    PYTHONPATH=../src python -m coverage run --branch --source=../src -m unittest discover -s tests -v
+    PYTHONPATH=../src python -m coverage run --branch --source=../src -m unittest discover -v
   # coverage reports
   - python -m coverage report -m
 
