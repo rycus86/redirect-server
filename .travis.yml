@@ -8,6 +8,7 @@ install: skip
 script:
   # prepare python modules
   - pip install -r requirements.txt
+  - pip install coverage
   # python tests
   - PYTHONPATH=src python -m coverage run --branch --source=src -m unittest discover -s tests -v
   # coverage reports
