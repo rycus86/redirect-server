@@ -1,0 +1,57 @@
+language: python
+python:
+  - '3.6'
+  - '2.7'
+
+sudo:
+  - required
+services:
+  - docker
+install: skip
+
+jobs:
+  include:
+    - stage: test
+      script:
+        # prepare python modules
+        - pip install -r requirements.txt
+        # python tests
+        - PYTHONPATH=src python -m coverage run --branch --source=src -m unittest discover -s tests -v
+        # coverage reports
+        - python -m coverage report -m
+
+    - &deploy-stage
+      stage: deploy
+      if: branch = master
+      script:
+        - docker run --rm --privileged multiarch/qemu-user-static:register --reset
+        - |
+          docker build -t redirect-server:$DOCKER_TAG    \
+            --build-arg GIT_COMMIT=$TRAVIS_COMMIT        \
+            --build-arg BUILD_TIMESTAMP=$(date +%s)      \
+            -f $DOCKERFILE .
+        - docker tag redirect-server:$DOCKER_TAG rycus86/redirect-server:$DOCKER_TAG
+        - docker login -u="rycus86" -p="$DOCKER_PASSWORD"
+      after_success:
+        - docker push rycus86/redirect-server:$DOCKER_TAG
+      env:
+        - DOCKER_TAG=amd64
+        - DOCKERFILE=Dockerfile
+
+    - <<: *deploy-stage
+      env:
+        - DOCKER_TAG=armhf
+        - DOCKERFILE=Dockerfile.armhf
+
+    - <<: *deploy-stage
+      env:
+        - DOCKER_TAG=aarch64
+        - DOCKERFILE=Dockerfile.aarch64
+
+    - stage: manifest
+      if: branch = master
+      script:
+        - docker login -u="rycus86" -p="${DOCKER_PASSWORD}"
+        - curl -fsSL https://github.com/estesp/manifest-tool/releases/download/v0.7.0/manifest-tool-linux-amd64 > ./manifest-tool
+        - chmod +x ./manifest-tool
+        - ./manifest-tool push from-spec manifest.yml

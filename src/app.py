@@ -15,6 +15,15 @@ app.config['SECRET_KEY'] = read_configuration('SECRET_KEY', '/var/secrets/flask'
 auth = HTTPBasicAuth()
 metrics = PrometheusMetrics(app)
 
+metrics.info('flask_app_info', 'Application info',
+             version=os.environ.get('GIT_COMMIT') or 'unknown')
+
+metrics.info(
+    'flask_app_built_at', 'Application build timestamp'
+).set(
+    float(os.environ.get('BUILD_TIMESTAMP') or '0')
+)
+
 logging.basicConfig(format='%(asctime)s [%(levelname)s] %(module)s.%(funcName)s - %(message)s')
 logger = logging.getLogger('redirect-service')
 logger.setLevel(logging.INFO)
