@@ -1,25 +1,20 @@
 language: python
+sudo: true
 python:
   - '3.6'
   - '2.7'
 
-sudo:
-  - required
-services:
-  - docker
 install: skip
+script:
+  # prepare python modules
+  - pip install -r requirements.txt
+  # python tests
+  - PYTHONPATH=src python -m coverage run --branch --source=src -m unittest discover -s tests -v
+  # coverage reports
+  - python -m coverage report -m
 
 jobs:
   include:
-    - stage: test
-      script:
-        # prepare python modules
-        - pip install -r requirements.txt
-        # python tests
-        - PYTHONPATH=src python -m coverage run --branch --source=src -m unittest discover -s tests -v
-        # coverage reports
-        - python -m coverage report -m
-
     - &deploy-stage
       stage: deploy
       if: branch = master
