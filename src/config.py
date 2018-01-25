@@ -1,5 +1,6 @@
 import os
 import re
+import sys
 import hashlib
 import threading
 
@@ -59,6 +60,9 @@ class AdminSettings(object):
             return
 
         if self.algorithm:
+            if sys.version_info.major > 2:
+                password = password.encode('utf8')
+
             return self.password == self.algorithm(password).hexdigest()
 
         else:

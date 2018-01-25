@@ -1,5 +1,6 @@
 import os
 import re
+import sys
 import base64
 import hashlib
 import unittest
@@ -23,8 +24,15 @@ class AdminTest(unittest.TestCase):
     def _auth(self, username='admin', password='admin'):
         login = '%s:%s' % (username, password)
         return { 
-            'Authorization': 'Basic %s' % base64.encodestring(login).strip()
+            'Authorization': 'Basic %s' % self._base64(login)
         }
+
+    @staticmethod
+    def _base64(string):
+        if sys.version_info.major == 2:
+            return base64.encodestring(string).strip()
+        else:
+            return base64.encodestring(bytes(string, 'utf8')).decode('utf8').strip()
 
     def tearDown(self):
         getattr(app, '_rules')['simple'] = {}
@@ -54,7 +62,7 @@ class AdminTest(unittest.TestCase):
 
     def test_login_basic_auth(self):
         response = self.client.get('/admin', headers={
-            'Authorization': 'Basic %s' % base64.encodestring('admin:admin').strip()
+            'Authorization': 'Basic %s' % self._base64('admin:admin')
         })
 
         self.assertEqual(response.status_code, 200)
