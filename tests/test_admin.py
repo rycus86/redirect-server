@@ -45,6 +45,8 @@ class AdminTest(unittest.TestCase):
             if category:
                 self.assertEqual(flash_category, category)
 
+            session['_flashes'] = []
+
     def test_login_required(self):
         response = self.client.get('/admin')
 
@@ -115,7 +117,52 @@ class AdminTest(unittest.TestCase):
                 'target': 'missing-source'
             })
 
-            self.assertFlash('Failed to add rule', 'error')
+            self.assertFlash('.* Missing source', 'error')
+
+            response = self.client.post('/admin', headers=self._auth(), data={
+                'source': '/missing/target'
+            })
+
+            self.assertFlash('.* Missing target', 'error')
+
+            with open('by-admin.rules', 'w') as admin_file:
+                admin_file.write("""
+                admin:
+                  path: /admin
+                  username: admin
+                  password: admin
+                """)
+
+            response = self.client.post('/admin', headers=self._auth(), data={
+                'source': '/admin',
+                'target': 'masking-admin'
+            })
+
+            self.assertFlash('.* Rule is masking the admin path', 'error')
+
+            with open('by-admin.rules', 'w') as admin_file:
+                admin_file.write("""
+                rules:
+                  - source: /simple
+                    target: simple-rule
+                  - source: /regex
+                    target: regex-rule
+                    regex: true
+                """)
+
+            response = self.client.post('/admin', headers=self._auth(), data={
+                'source': '/simple',
+                'target': 'masking-simple'
+            })
+            
+            self.assertFlash('.* Rule is already defined', 'error')
+
+            response = self.client.post('/admin', headers=self._auth(), data={
+                'source': '/regex',
+                'target': 'masking-regex'
+            })
+            
+            self.assertFlash('.* Regex rule is already defined', 'error')
 
         finally:
             if os.path.exists('by-admin.rules'):
@@ -146,6 +193,11 @@ class AdminTest(unittest.TestCase):
             Exception, 'Invalid password hashing algorithm',
             self._setup_admin, 'admin', {'invalid': 'abcd'}
         )
+
+    def test_invalid_admin_method(self):
+        response = self.client.delete('/admin', headers=self._auth())
+
+        self.assertEqual(response.status_code, 405)
 
     def test_admin_settings(self):
         try:
