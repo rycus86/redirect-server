@@ -7,7 +7,7 @@ from flask_httpauth import HTTPBasicAuth
 from prometheus_flask_exporter import PrometheusMetrics
 from docker_helper import read_configuration
 
-from config import configure, add_rule
+from config import configure, add_rule, delete_rule
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = read_configuration('SECRET_KEY', '/var/secrets/flask', 'InSecure')
@@ -85,6 +85,23 @@ def handle_admin_request():
         admin = _rules['admin']
         if not admin:
             return 'Unexpected error: admin UI is not configured', 500
+
+        if 'delete' in request.form:
+            source = request.form.get('delete')
+
+            logger.info('Deleting rule: %s' % source)
+
+            try:
+                delete_rule(source)
+
+                reload_configuration()
+
+                flash('Rule successfully deleted')
+
+            except Exception as ex:
+                flash('Failed to delete rule: %s' % ex, category='error')
+
+            return redirect(admin.path, 302)
 
         source = request.form.get('source')
         target = request.form.get('target')

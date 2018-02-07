@@ -1,0 +1,26 @@
+<div class="edit">
+  <form method="POST">
+    <div><span>Source:</span> <input type="text" name="source"/></div>
+    <div><span>Target:</span> <input type="text" name="target"/></div>
+    <div><span>Regex:</span> <input type="checkbox" name="regex"/></div>
+
+    <div class="spacer"></div>
+
+    <div>
+      <span>Code:</span>
+      <select name="code">
+        <option value="301" selected>301 - Permanent Redirect</option>
+        <option value="302">302 - Temporary Redirect</option>
+      </select>
+    </div>
+    <div><span>TTL:</span> <input type="text" name="ttl"/></div>
+    <div>
+      <span>Header:</span> <input type="text" name="header__name"/> = <input type="text" name="header__value"/>
+      <input type="button" value="Add more" onclick="addMoreHeaders(this)"/>
+    </div>
+
+    <div class="spacer"></div>
+
+    <input type="submit" value="Create"/>
+  </form>
+</div>

@@ -3,139 +3,29 @@
   <title>Admin UI - Redirect Server</title>
 
   <style>
-    div.edit span {
-        width: 60px;
-        display: inline-block;
-    }
-
-    div.edit form > div {
-        margin: 3px 0;
-    }
-
-    input[type="text"] {
-        width: 300px;
-    }
-
-    input[name="header__name"], input[name="header__value"] {
-        width: 150px;
-    }
-
-    input[type="submit"] {
-        margin-left: 60px;
-    }
-
-    div.rules div {
-        font-family: monospace;
-    }
-
-    div.rules li div {
-        padding-left: 16px;
-    }
-
-    div.spacer {
-        height: 5px;
-    }
+    {% include 'styles.css' %}
   </style>
-
   <script>
-    function addMoreHeaders(el) {
-      var parent = el.parentElement,
-          grandParent = parent.parentElement,
-          cloned = parent.cloneNode(true),
-          sibling = parent.nextSibling;
-
-      cloned.querySelectorAll('input[type="text"]').forEach(function (item) {
-          item.value = '';
-      });
-
-      grandParent.insertBefore(cloned, sibling);
-      parent.removeChild(el);
-    }
+    {% include 'scripts.js' %}
   </script>
 </head>
 <body>
   <h1>Admin UI</h1>
 
   <div class="messages">
-    {% with messages = get_flashed_messages() %}
-      {% if messages %}
-        <ul class=flashes>
-        {% for message in messages %}
-          <li>{{ message }}</li>
-        {% endfor %}
-        </ul>
-      {% endif %}
-    {% endwith %}
+    {% include 'messages.html' %}
   </div>
-  
   <div class="edit">
-    <form method="POST">
-      <div><span>Source:</span> <input type="text" name="source"/></div>
-      <div><span>Target:</span> <input type="text" name="target"/></div>
-      <div><span>Regex:</span> <input type="checkbox" name="regex"/></div>
-
-      <div class="spacer"></div>
-
-      <div>
-        <span>Code:</span>
-        <select name="code">
-          <option value="301" selected>301 - Permanent Redirect</option>
-          <option value="302">302 - Temporary Redirect</option>
-        </select>
-      </div>
-      <div><span>TTL:</span> <input type="text" name="ttl"/></div>
-      <div>
-        <span>Header:</span> <input type="text" name="header__name"/> = <input type="text" name="header__value"/>
-        <input type="button" value="Add more" onclick="addMoreHeaders(this)"/>
-      </div>
-
-      <div class="spacer"></div>
-
-      <input type="submit" value="Create"/>
-    </form>
+    {% include 'inputs.html' %}
   </div>
-
   <div class="rules">
+    {% with section = 'simple', rules = simple_rules.values() %}
+      {% include 'rules.html' %}
+    {% endwith %}
 
-    {% if simple_rules %}
-    <h2>Simple rules</h2>
-    <div class="simple">
-      <ol>
-      {% for key, rule in simple_rules.items()|sort %}
-        <li>
-            <b>{{ rule.source }}</b> -&gt; {{ rule.target }} [{{ rule.code }}]
-            {% if rule.headers %}
-              {% for name, value in rule.headers.items()|sort %}
-              <div>
-                <b>{{ name }}:</b> {{ value }}
-              </div>
-              {% endfor %}
-            {% endif %}
-        </li>
-      {% endfor %}
-      </ol>
-    </div>
-    {% endif %}
-
-    {% if regex_rules %}
-    <h2>Regex rules</h2>
-    <div class="regex">
-      <ol>
-      {% for rule in regex_rules|sort(attribute='source') %}
-        <li>
-            <b>{{ rule.source }}</b> -&gt; {{ rule.target }} [{{ rule.code }}]
-            {% if rule.headers %}
-              {% for name, value in rule.headers.items()|sort %}
-              <div>
-                <b>{{ name }}:</b> {{ value }}
-              </div>
-              {% endfor %}
-            {% endif %}
-        </li>
-      {% endfor %}
-      </ol>
-    </div>
-    {% endif %}
+    {% with section = 'regex', rules = regex_rules %}
+      {% include 'rules.html' %}
+    {% endwith %}
 
     <h2>Admin settings</h2>
     <div class="admin">
@@ -143,7 +33,6 @@
         <li><b>Path:</b> {{ admin.path }}</li>
       <ul>
     </div>
-
   </div> 
 </body>
 </html>

@@ -119,6 +119,89 @@ class AdminTest(unittest.TestCase):
             if os.path.exists('by-admin.rules'):
                 os.remove('by-admin.rules')
 
+    def test_delete_rule(self):
+        try:
+            self.assertEqual(len(self._simple_rules), 0)
+            self.assertEqual(len(self._regex_rules), 0)
+
+            response = self.client.post('/admin', headers=self._auth(), data={
+                'source': '/simple',
+                'target': 'http://localhost/simple'
+            })
+
+            self.assertFlash('Rule successfully added!')
+
+            self.assertEqual(len(self._simple_rules), 1)
+            self.assertEqual(len(self._regex_rules), 0)
+            
+            self._setup_admin('admin', 'admin')
+
+            response = self.client.post('/admin', headers=self._auth(), data={
+                'source': '/regex',
+                'target': 'http://localhost/regex',
+                'regex': 'true'
+            })
+
+            self.assertFlash('Rule successfully added!')
+
+            self.assertEqual(len(self._simple_rules), 1)
+            self.assertEqual(len(self._regex_rules), 1)
+
+            self._setup_admin('admin', 'admin')
+
+            response = self.client.post('/admin', headers=self._auth(), data={
+                'delete': '/missing'
+            })
+
+            self.assertFlash('Failed to delete rule: Rule not found')
+
+            self.assertEqual(len(self._simple_rules), 1)
+            self.assertEqual(len(self._regex_rules), 1)
+
+            response = self.client.get('/simple') 
+            self.assertEqual(response.status_code, 301)
+
+            response = self.client.get('/regex') 
+            self.assertEqual(response.status_code, 301)
+
+            self._setup_admin('admin', 'admin')
+
+            response = self.client.post('/admin', headers=self._auth(), data={
+                'delete': '/regex'
+            })
+
+            self.assertFlash('Rule successfully deleted')
+
+            self.assertEqual(len(self._simple_rules), 1)
+            self.assertEqual(len(self._regex_rules), 0)
+
+            response = self.client.get('/simple') 
+            self.assertEqual(response.status_code, 301)
+
+            response = self.client.get('/regex') 
+            self.assertEqual(response.status_code, 404)
+
+            self._setup_admin('admin', 'admin')
+            
+            response = self.client.post('/admin', headers=self._auth(), data={
+                'delete': '/simple'
+            })
+
+            self.assertFlash('Rule successfully deleted')
+
+            self.assertEqual(len(self._simple_rules), 0)
+            self.assertEqual(len(self._regex_rules), 0)
+
+            response = self.client.get('/simple') 
+            self.assertEqual(response.status_code, 404)
+
+            response = self.client.get('/regex') 
+            self.assertEqual(response.status_code, 404)
+
+        finally:
+            if os.path.exists('by-admin.rules'):
+                os.remove('by-admin.rules')
+
     def test_invalid_rules(self):
         try:
             response = self.client.post('/admin', headers=self._auth(), data={

@@ -1,0 +1,25 @@
+{% if rules %}
+<h2>{{ section|capitalize }} rules</h2>
+<div class="{{ section }}">
+  <ol>
+  {% for rule in rules|sort(attribute='source') %}
+    <li>
+      <div>
+        <b>{{ rule.source }}</b> -&gt; {{ rule.target }} [{{ rule.code }}]
+        <form class="inline" method="POST" onsubmit="return deleteRule('{{ rule.source }}')">
+          <input type="hidden" name="delete" value="{{ rule.source }}"/>
+          <input type="submit" value="Delete"/>
+        </form>
+      </div>
+        {% if rule.headers %}
+          {% for name, value in rule.headers.items()|sort %}
+          <div class="indent">
+            <b>{{ name }}:</b> {{ value }}
+          </div>
+          {% endfor %}
+        {% endif %}
+    </li>
+  {% endfor %}
+  </ol>
+</div>
+{% endif %}

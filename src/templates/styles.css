@@ -1,0 +1,40 @@
+div.edit span {
+    width: 60px;
+    display: inline-block;
+}
+
+div.edit form > div {
+    margin: 3px 0;
+}
+
+input[type="text"] {
+    width: 300px;
+}
+
+input[name="header__name"], input[name="header__value"] {
+    width: 150px;
+}
+
+.edit input[type="submit"] {
+    margin-left: 60px;
+}
+
+div.rules div {
+    font-family: monospace;
+}
+
+div.rules form.inline {
+    display: inline;
+}
+
+div.rules li {
+    margin-bottom: 3px;
+}
+
+div.rules li div.indent {
+    padding-left: 16px;
+}
+
+div.spacer {
+    height: 5px;
+}

@@ -17,6 +17,7 @@ class Rule(object):
         self.regex = None
         self.headers = kwargs.get('headers', dict())
         self.ttl = kwargs.get('ttl')
+        self.source_file_path = kwargs.get('source_file')
 
     def get_target(self, path):
         return self.target
@@ -147,9 +148,9 @@ def read_rules(file_path):
                 )
 
             if item.get('regex'):
-                rule = RegexRule(source, target)
+                rule = RegexRule(source, target, source_file=file_path)
             else:
-                rule = Rule(source, target)
+                rule = Rule(source, target, source_file=file_path)
 
             if 'code' in item:
                 code = item['code']
@@ -279,3 +280,40 @@ def add_rule(target_file=None, base_dir=None, **kwargs):
 
         with open(path, 'w') as new_file:
             yaml.dump(config, new_file)
+
+
+def _delete_single_rule(rule):
+    path = rule.source_file_path
+
+    with _config_lock:
+        if os.path.exists(path):
+            with open(path, 'r') as existing_file:
+                config = yaml.load(existing_file)
+
+        else:
+            raise Exception(
+                'Rule file not found: %s' % path
+            )
+
+        config['rules'] = list(r for r in config['rules'] if r['source'] != rule.source)
+
+        with open(path, 'w') as new_file:
+            yaml.dump(config, new_file)
+
+
+def delete_rule(source, base_dir=None):
+    if not base_dir:
+        base_dir = os.environ.get('RULES_DIR', '.')
+
+    simple, regex, _ = configure(base_dir)
+
+    for src, rule in simple.items():
+        if source == src:
+            return _delete_single_rule(rule)
+
+    for rule in regex:
+        if source == rule.source:
+            return _delete_single_rule(rule)
+
+    raise Exception('Rule not found: %s' % source)
+
