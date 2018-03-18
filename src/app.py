@@ -36,6 +36,7 @@ _rules = {
 }
 
 
+@app.route('/', methods=['GET'], defaults={'_': None})
 @app.route('/<path:_>', methods=['GET', 'POST'])
 def catch_all(_):
     path = request.path

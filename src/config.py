@@ -316,4 +316,3 @@ def delete_rule(source, base_dir=None):
             return _delete_single_rule(rule)
 
     raise Exception('Rule not found: %s' % source)
-

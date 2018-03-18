@@ -47,6 +47,13 @@ class RulesTest(unittest.TestCase):
         self.verify('/smple', 'http://regex.one')
         self.verify('/0th3rRul3', 'http://regex.two')
 
+    def test_root_rule(self):
+        self._set_rules([
+            Rule('/', 'http://root.rule')
+        ], [])
+
+        self.verify('/', 'http://root.rule')
+
     def test_rule_ttl(self):
         with open('./ttl.rules', 'w') as rules:
             rules.write("""

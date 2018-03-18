@@ -7,7 +7,9 @@ RUN apk add --no-cache python3
 ADD requirements.txt /tmp/requirements.txt
 RUN pip3 install -r /tmp/requirements.txt
 
-RUN adduser -S webapp
+RUN adduser -S webapp \
+    && mkdir /app \
+    && chown webapp:root /app
 USER webapp
 
 ADD src /app
