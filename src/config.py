@@ -180,47 +180,61 @@ def read_rules(file_path):
             yield rule
 
 
-def configure(base_dir=None):
+def configure(base_dir=None, admin_file=None):
     simple = {}
     regex = []
     admin = None
 
     if not base_dir:
         base_dir = os.environ.get('RULES_DIR', '.')
-    
+
+    if not admin_file:
+        admin_file = os.environ.get('TARGET_FILE', 'by-admin.rules')
+
+    config_files = [] 
+
     for filename in os.listdir(base_dir):
         _, extension = os.path.splitext(filename)
 
         if extension in ('.rules', '.yml', '.yaml'):
-            for rule in read_rules(os.path.join(base_dir, filename)):
-                if isinstance(rule, AdminSettings):
-                    if admin:
-                        raise Exception(
-                            'Admin settings are already defined'
-                        )
+            config_files.append(os.path.join(base_dir, filename))
 
-                    admin = rule
-                    continue
+    admin_path = os.path.join(base_dir, admin_file)
 
-                if rule.source in simple:
+    if os.path.exists(admin_path):
+        if admin_path not in config_files:
+            config_files.append(admin_path)
+
+    for config_file_path in config_files:
+        for rule in read_rules(config_file_path):
+            if isinstance(rule, AdminSettings):
+                if admin:
                     raise Exception(
-                        'Rule is already defined for %s' % rule.source
+                        'Admin settings are already defined'
                     )
 
-                if admin and admin.path == rule.source:
-                    raise Exception(
-                        'Rule is masking the admin path: %s' % rule.source
-                    )
+                admin = rule
+                continue
 
-                if any(rule.source == r.source for r in regex):
-                    raise Exception(
-                        'Regex rule is already defined for %s' % rule.source
-                    )
+            if rule.source in simple:
+                raise Exception(
+                    'Rule is already defined for %s' % rule.source
+                )
 
-                if rule.regex:
-                    regex.append(rule)
-                else:
-                    simple[rule.source] = rule
+            if admin and admin.path == rule.source:
+                raise Exception(
+                    'Rule is masking the admin path: %s' % rule.source
+                )
+
+            if any(rule.source == r.source for r in regex):
+                raise Exception(
+                    'Regex rule is already defined for %s' % rule.source
+                )
+
+            if rule.regex:
+                regex.append(rule)
+            else:
+                simple[rule.source] = rule
 
     return simple, regex, admin
 

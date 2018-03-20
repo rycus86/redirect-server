@@ -8,12 +8,14 @@ ADD requirements.txt /tmp/requirements.txt
 RUN pip3 install -r /tmp/requirements.txt
 
 RUN adduser -S webapp \
-    && mkdir /app \
-    && chown webapp:root /app
+    && mkdir /var/rules \
+    && chown webapp:root /var/rules
 USER webapp
 
 ADD src /app
 WORKDIR /app
+
+ENV RULES_DIR /var/rules
 
 STOPSIGNAL SIGINT
 
