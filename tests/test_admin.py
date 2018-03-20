@@ -68,6 +68,11 @@ class AdminTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn('text/html', response.content_type)
         self.assertIn('Admin UI', str(response.data))
+        self.assertIn('Cache-Control', response.headers)
+        self.assertEqual(
+            'no-cache, no-store, must-revalidate',
+            response.headers['Cache-Control']
+        )
 
     def test_add_simple_rule(self):
         try:

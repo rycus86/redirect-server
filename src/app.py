@@ -75,12 +75,16 @@ def catch_all(_):
 def handle_admin_request():
     if request.method == 'GET':
         simple, regex, admin = (_rules[key] for key in ('simple', 'regex', 'admin'))
-        return render_template(
+        content = render_template(
             'admin.html',
             simple_rules=simple,
             regex_rules=regex,
             admin=admin
         )
+
+        return content, 200, {
+            'Cache-Control': 'no-cache, no-store, must-revalidate'
+        }
 
     elif request.method == 'POST': 
         admin = _rules['admin']
