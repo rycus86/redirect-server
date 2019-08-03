@@ -32,7 +32,7 @@ jobs:
         # smoke tests
         - ./smoke_test.sh $DOCKER_TAG
       after_success:
-        - docker login -u="rycus86" -p="$DOCKER_PASSWORD"
+        - echo ${DOCKER_PASSWORD} | docker login --username "rycus86" --password-stdin
         - docker push rycus86/redirect-server:$DOCKER_TAG
       env:
         - DOCKER_TAG=amd64
@@ -52,7 +52,7 @@ jobs:
       if: branch = master
       sudo: true
       script:
-        - docker login -u="rycus86" -p="${DOCKER_PASSWORD}"
+        - echo ${DOCKER_PASSWORD} | docker login --username "rycus86" --password-stdin
         - curl -fsSL https://github.com/estesp/manifest-tool/releases/download/v0.7.0/manifest-tool-linux-amd64 > ./manifest-tool
         - chmod +x ./manifest-tool
         - ./manifest-tool push from-spec manifest.yml
