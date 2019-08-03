@@ -15,6 +15,7 @@ class Rule(object):
         self.target = target
         self.code = code
         self.regex = None
+        self.host = kwargs.get('host')
         self.headers = kwargs.get('headers', dict())
         self.ttl = kwargs.get('ttl')
         self.source_file_path = kwargs.get('source_file')
@@ -161,6 +162,9 @@ def read_rules(file_path):
                     )
 
                 rule.code = int(code)
+
+            if 'host' in item:
+                rule.host = item['host'].strip()
 
             if 'headers' in item:
                 headers = item['headers']

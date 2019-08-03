@@ -11,6 +11,11 @@
           <input type="submit" value="Delete"/>
         </form>
       </div>
+        {% if rule.host %}
+          <div class="indent">
+            <b>Host:</b> {{ rule.host }}
+          </div>
+        {% endif %}
         {% if rule.headers %}
           {% for name, value in rule.headers.items()|sort %}
           <div class="indent">

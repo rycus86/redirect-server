@@ -54,6 +54,19 @@ class RulesTest(unittest.TestCase):
 
         self.verify('/', 'http://root.rule')
 
+    def test_rules_with_host(self):
+        self._set_rules([
+            Rule('/sample', 'http://sample.com'),
+            Rule('/testing', 'https://testing.com', host='testing.com'),
+            Rule('/example', 'http://example.com', host='www.example.com')
+        ])
+
+        self.verify('/sample', 'http://sample.com')
+        self.verify('/testing', code=404)
+        self.verify('/testing', 'https://testing.com', with_host='testing.com')
+        self.verify('/example', code=404)
+        self.verify('/example', 'http://example.com', with_host='www.example.com')
+
     def test_rule_ttl(self):
         with open('./ttl.rules', 'w') as rules:
             rules.write("""
@@ -107,6 +120,10 @@ class RulesTest(unittest.TestCase):
                 headers:
                   X-Sample: sample
                   X-Testing: testing
+              
+              - source: /with/host
+                host: restricted.host.com
+                target: http://with.host.com
             """)
 
         with open('./regex.rules', 'w') as rules:
@@ -140,6 +157,9 @@ class RulesTest(unittest.TestCase):
             'X-Testing': 'testing'
         })
 
+        self.verify('/with/host', code=404)
+        self.verify('/with/host', 'http://with.host.com', with_host='restricted.host.com')
+
         self.verify('/xyz123', 'http://letters.and.numbers')
         self.verify('/xyz123zz', code=404)
         self.verify('http://example1.domain/api/v1/test', 'http://example1.domain/api/v4/test')
@@ -151,10 +171,10 @@ class RulesTest(unittest.TestCase):
         self.verify('/999/xyza', 'http://reversed/xyza/999')
         self.verify('/000/mmm1', code=404)
 
-    def verify(self, uri, target=None, code=301, headers=None):
-        response = self.client.get(uri)
+    def verify(self, uri, target=None, code=301, with_host=None, headers=None):
+        response = self.client.get(uri, headers={'Host': with_host} if with_host else None)
 
-        self.assertEqual(response.status_code, code)
+        self.assertEqual(response.status_code, code, msg='%s %s' % (response, response.headers))
 
         if target:
             self.assertEqual(response.headers.pop('Location', None), target)

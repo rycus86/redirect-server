@@ -49,11 +49,21 @@ def catch_all(_):
     if request.method != 'GET':
         return 'Invalid HTTP method: %s' % request.method, 405
 
+    host_header = request.headers.get('Host', '')
+
     rule = _rules['simple'].get(path)
+
+    if rule and rule.host and rule.host.lower() != host_header.lower():
+        # discard this rule if the Host header does not match
+        rule = None
 
     if not rule:
         for regex_rule in _rules['regex']:
             if regex_rule.matches(path):
+                if regex_rule.host and regex_rule.host.lower() != host_header.lower():
+                    # discard this rule if the Host header does not match
+                    continue
+
                 rule = regex_rule
                 break
 
@@ -109,6 +119,7 @@ def handle_admin_request():
             return redirect(admin.path, 302)
 
         source = request.form.get('source')
+        host = request.form.get('host')
         target = request.form.get('target')
         regex = 'regex' in request.form
         code = request.form.get('code')
@@ -126,12 +137,12 @@ def handle_admin_request():
 
         try:
             logger.info(
-                'Adding rule: %s -> %s [%s] regex=%s ttl=%s headers=%s' % \
-                (source, target, code, regex, ttl, headers)
+                'Adding rule: %s -> %s [%s] regex=%s host=%s ttl=%s headers=%s' % \
+                (source, target, code, regex, host, ttl, headers)
             )
 
             add_rule(
-                source=source, target=target, regex=regex,
+                source=source, target=target, regex=regex, host=host,
                 code=code, ttl=ttl, headers=headers
             )
 

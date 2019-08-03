@@ -11,6 +11,9 @@ rules:
 - source: /regex/(.+)
   target: http://test.regex/\1
   regex:  true
+- source: /host
+  host: restricted.host.com
+  target: http://with.host
 
 admin:
   path: /admin
@@ -25,7 +28,7 @@ docker run -d -p 5000:17123                     \
 
 for _ in $(seq 10); do
   curl -fs http://localhost:5000/metrics > /dev/null
-  if [ "$?" == "0" ]; then
+  if [ "$?" = "0" ]; then
     break
   else
     sleep 1
@@ -40,6 +43,12 @@ curl -fsv http://localhost:5000/regex/first 2>&1 | grep '< Location: http://test
 
 echo -n "Check /regex/second : "
 curl -fsv http://localhost:5000/regex/second 2>&1 | grep '< Location: http://test.regex/second' || exit 1
+
+echo -n "Check /host (not matching) : "
+curl -sv http://localhost:5000/host 2>&1 | grep '< HTTP/1.0 404 NOT FOUND' || exit 1
+
+echo -n "Check /host (matching) : "
+curl -fsv -H 'Host: restricted.host.com' http://localhost:5000/host 2>&1 | grep '< Location: http://with.host' || exit 1
 
 echo -n "Check /admin : "
 curl -fsv -u 'smoke:testing' http://localhost:5000/admin 2>&1 | grep '< HTTP/1.0 200 OK' || exit 1
